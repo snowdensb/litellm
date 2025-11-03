@@ -2,7 +2,7 @@ version: 2.1
 orbs:
   codecov: codecov/codecov@4.0.1
   node: circleci/node@5.1.0  # Add this line to declare the node orb
-  win: circleci/windows@5.0  # Add Windows orb
+  win: circleci/windows@5.0.0  # Add Windows orb
 
 commands:
   setup_google_dns:
