@@ -4,6 +4,9 @@
     "prisma": "^5.17.0",
     "react-copy-to-clipboard": "^5.1.0"
   },
+  "dependencies-comments": {
+    "scott": "Used to trigger scan"
+  },
   "devDependencies": {
     "@types/react-copy-to-clipboard": "^5.0.7"
   }
