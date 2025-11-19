@@ -1,0 +1,15 @@
++import DOMPurify from 'dompurify';
+ "use client";
+ 
+ import UIThemeSettings from "@/components/ui_theme_settings";
+ import useAuthorized from "@/app/(dashboard)/hooks/useAuthorized";
+ 
+ const UIThemePage = () => {
+   const { userId, userRole, accessToken } = useAuthorized();
++  const sanitizedUserId = DOMPurify.sanitize(userId);
+ 
+-  return <UIThemeSettings userID={userId} userRole={userRole} accessToken={accessToken} />;
++  return <UIThemeSettings userID={sanitizedUserId} userRole={userRole} accessToken={accessToken} />;
+ };
+ 
+ export default UIThemePage;
