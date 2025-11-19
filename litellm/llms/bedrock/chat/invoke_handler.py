@@ -3,21 +3,15 @@ TODO: DELETE FILE. Bedrock LLM is no longer used. Goto `litellm/llms/bedrock/cha
 """
 
 import copy
-import json
 import time
 import types
-import urllib.parse
-import uuid
 from functools import partial
 from typing import (
-    Any,
     AsyncIterator,
     Callable,
     Iterator,
-    List,
     Optional,
     Tuple,
-    Union,
     cast,
     get_args,
 )
@@ -26,6 +20,7 @@ import httpx  # type: ignore
 
 import litellm
 from litellm import verbose_logger
+from litellm._uuid import uuid
 from litellm.caching.caching import InMemoryCache
 from litellm.litellm_core_utils.core_helpers import map_finish_reason
 from litellm.litellm_core_utils.litellm_logging import Logging
@@ -672,16 +667,6 @@ class BedrockLLM(BaseAWSLLM):
 
         return model_response
 
-    def encode_model_id(self, model_id: str) -> str:
-        """
-        Double encode the model ID to ensure it matches the expected double-encoded format.
-        Args:
-            model_id (str): The model ID to encode.
-        Returns:
-            str: The double-encoded model ID.
-        """
-        return urllib.parse.quote(model_id, safe="")
-
     def completion(  # noqa: PLR0915
         self,
         model: str,
@@ -1176,33 +1161,6 @@ class BedrockLLM(BaseAWSLLM):
                 return cast(litellm.BEDROCK_INVOKE_PROVIDERS_LITERAL, provider)
         return None
 
-    def get_bedrock_model_id(
-        self,
-        optional_params: dict,
-        provider: Optional[litellm.BEDROCK_INVOKE_PROVIDERS_LITERAL],
-        model: str,
-    ) -> str:
-        modelId = optional_params.pop("model_id", None)
-        if modelId is not None:
-            modelId = self.encode_model_id(model_id=modelId)
-        else:
-            modelId = model
-
-        if provider == "llama" and "llama/" in modelId:
-            modelId = self._get_model_id_for_llama_like_model(modelId)
-
-        return modelId
-
-    def _get_model_id_for_llama_like_model(
-        self,
-        model: str,
-    ) -> str:
-        """
-        Remove `llama` from modelID since `llama` is simply a spec to follow for custom bedrock models
-        """
-        model_id = model.replace("llama/", "")
-        return self.encode_model_id(model_id=model_id)
-
 
 def get_response_stream_shape():
     global _response_stream_shape_cache
@@ -1226,6 +1184,7 @@ class AWSEventStreamDecoder:
         self.parser = EventStreamJSONParser()
         self.content_blocks: List[ContentBlockDeltaEvent] = []
         self.tool_calls_index: Optional[int] = None
+        self.response_id: Optional[str] = None
 
     def check_empty_tool_call_args(self) -> bool:
         """
@@ -1289,6 +1248,17 @@ class AWSEventStreamDecoder:
 
     def converse_chunk_parser(self, chunk_data: dict) -> ModelResponseStream:
         try:
+            # Capture the conversationId from the first messageStart event
+            # and use it as the consistent ID for all subsequent chunks.
+            if self.response_id is None:
+                if "messageStart" in chunk_data:
+                    conversation_id = chunk_data["messageStart"].get("conversationId")
+                    if conversation_id:
+                        self.response_id = f"chatcmpl-{conversation_id}"
+                else:
+                    # Fallback to generating a UUID if the first chunk is not messageStart
+                    self.response_id = f"chatcmpl-{uuid.uuid4()}"
+
             verbose_logger.debug("\n\nRaw Chunk: {}\n\n".format(chunk_data))
             text = ""
             tool_use: Optional[ChatCompletionToolCallChunk] = None
@@ -1352,9 +1322,11 @@ class AWSEventStreamDecoder:
                             "name": None,
                             "arguments": delta_obj["toolUse"]["input"],
                         },
-                        "index": self.tool_calls_index
-                        if self.tool_calls_index is not None
-                        else index,
+                        "index": (
+                            self.tool_calls_index
+                            if self.tool_calls_index is not None
+                            else index
+                        ),
                     }
                 elif "reasoningContent" in delta_obj:
                     provider_specific_fields = {
@@ -1384,9 +1356,11 @@ class AWSEventStreamDecoder:
                             "name": None,
                             "arguments": "{}",
                         },
-                        "index": self.tool_calls_index
-                        if self.tool_calls_index is not None
-                        else index,
+                        "index": (
+                            self.tool_calls_index
+                            if self.tool_calls_index is not None
+                            else index
+                        ),
                     }
             elif "stopReason" in chunk_data:
                 finish_reason = map_finish_reason(chunk_data.get("stopReason", "stop"))
@@ -1416,6 +1390,7 @@ class AWSEventStreamDecoder:
                         ),
                     )
                 ],
+                id=self.response_id,
                 usage=usage,
                 provider_specific_fields=model_response_provider_specific_fields,
             )
@@ -1448,7 +1423,7 @@ class AWSEventStreamDecoder:
         ######### /bedrock/invoke nova mappings ###############
         elif "contentBlockDelta" in chunk_data:
             # when using /bedrock/invoke/nova, the chunk_data is nested under "contentBlockDelta"
-            _chunk_data = chunk_data.get("contentBlockDelta", None)
+            _chunk_data = chunk_data.get("contentBlockDelta", {})
             return self.converse_chunk_parser(chunk_data=_chunk_data)
         ######## bedrock.mistral mappings ###############
         elif "outputs" in chunk_data:

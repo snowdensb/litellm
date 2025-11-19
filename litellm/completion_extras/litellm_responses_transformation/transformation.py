@@ -18,13 +18,19 @@ from typing import (
     cast,
 )
 
+from openai.types.responses.tool_param import FunctionToolParam
+
 from litellm import ModelResponse
 from litellm._logging import verbose_logger
 from litellm.llms.base_llm.base_model_iterator import BaseModelResponseIterator
 from litellm.llms.base_llm.bridges.completion_transformation import (
     CompletionTransformationBridge,
 )
-from litellm.types.llms.openai import Reasoning
+from litellm.types.llms.openai import (
+    ChatCompletionToolParamFunctionChunk,
+    Reasoning,
+    ResponsesAPIOptionalRequestParams,
+)
 
 if TYPE_CHECKING:
     from openai.types.responses import ResponseInputImageParam
@@ -49,6 +55,45 @@ class LiteLLMResponsesTransformationHandler(CompletionTransformationBridge):
 
     def __init__(self):
         pass
+
+    def _handle_raw_dict_response_item(
+        self, item: Dict[str, Any], index: int
+    ) -> Tuple[Optional[Any], int]:
+        """
+        Handle raw dict response items from Responses API (e.g., GPT-5 Codex format).
+
+        Args:
+            item: Raw dict response item with 'type' field
+            index: Current choice index
+
+        Returns:
+            Tuple of (Choice object or None, updated index)
+        """
+        from litellm.types.utils import Choices, Message
+
+        item_type = item.get("type")
+
+        # Ignore reasoning items for now
+        if item_type == "reasoning":
+            return None, index
+
+        # Handle message items with output_text content
+        if item_type == "message":
+            content_list = item.get("content", [])
+            for content_item in content_list:
+                if isinstance(content_item, dict):
+                    content_type = content_item.get("type")
+                    if content_type == "output_text":
+                        response_text = content_item.get("text", "")
+                        msg = Message(
+                            role=item.get("role", "assistant"),
+                            content=response_text if response_text else "",
+                        )
+                        choice = Choices(message=msg, finish_reason="stop", index=index)
+                        return choice, index + 1
+
+        # Unknown or unsupported type
+        return None, index
 
     def convert_chat_completion_messages_to_responses_api(
         self, messages: List["AllMessageValues"]
@@ -124,12 +169,12 @@ class LiteLLMResponsesTransformationHandler(CompletionTransformationBridge):
         litellm_logging_obj: "LiteLLMLoggingObj",
         client: Optional[Any] = None,
     ) -> dict:
-        from litellm.types.llms.openai import ResponsesAPIOptionalRequestParams
-
         (
             input_items,
             instructions,
         ) = self.convert_chat_completion_messages_to_responses_api(messages)
+
+        optional_params = self._extract_extra_body_params(optional_params)
 
         # Build responses API request using the reverse transformation logic
         responses_api_request = ResponsesAPIOptionalRequestParams()
@@ -201,6 +246,11 @@ class LiteLLMResponsesTransformationHandler(CompletionTransformationBridge):
             if value is not None:
                 if key == "instructions" and instructions:
                     request_data["instructions"] = instructions
+                elif key == "stream_options" and isinstance(value, dict):
+                    request_data["stream_options"] = value.get("include_obfuscation")
+                elif key == "user":  # string can't be longer than 64 characters
+                    if isinstance(value, str) and len(value) <= 64:
+                        request_data["user"] = value
                 else:
                     request_data[key] = value
 
@@ -221,7 +271,6 @@ class LiteLLMResponsesTransformationHandler(CompletionTransformationBridge):
         json_mode: Optional[bool] = None,
     ) -> "ModelResponse":
         """Transform Responses API response to chat completion response"""
-
         from openai.types.responses import (
             ResponseFunctionToolCall,
             ResponseOutputMessage,
@@ -240,19 +289,35 @@ class LiteLLMResponsesTransformationHandler(CompletionTransformationBridge):
 
         choices: List[Choices] = []
         index = 0
+
+        reasoning_content: Optional[str] = None
+
         for item in raw_response.output:
+
             if isinstance(item, ResponseReasoningItem):
-                pass  # ignore for now.
+
+                for summary_item in item.summary:
+                    response_text = getattr(summary_item, "text", "")
+                    reasoning_content = response_text if response_text else ""
+
             elif isinstance(item, ResponseOutputMessage):
                 for content in item.content:
                     response_text = getattr(content, "text", "")
                     msg = Message(
-                        role=item.role, content=response_text if response_text else ""
+                        role=item.role,
+                        content=response_text if response_text else "",
+                        reasoning_content=reasoning_content,
                     )
 
                     choices.append(
-                        Choices(message=msg, finish_reason="stop", index=index)
+                        Choices(
+                            message=msg,
+                            finish_reason="stop",
+                            index=index,
+                        )
                     )
+
+                    reasoning_content = None  # flush reasoning content
                     index += 1
             elif isinstance(item, ResponseFunctionToolCall):
                 msg = Message(
@@ -267,12 +332,21 @@ class LiteLLMResponsesTransformationHandler(CompletionTransformationBridge):
                             "type": "function",
                         }
                     ],
+                    reasoning_content=reasoning_content,
                 )
 
                 choices.append(
                     Choices(message=msg, finish_reason="tool_calls", index=index)
                 )
+                reasoning_content = None  # flush reasoning content
                 index += 1
+            elif isinstance(item, dict):
+                # Handle raw dict responses (e.g., from GPT-5 Codex)
+                choice, index = self._handle_raw_dict_response_item(
+                    item=item, index=index
+                )
+                if choice is not None:
+                    choices.append(choice)
             else:
                 pass  # don't fail request if item in list is not supported
 
@@ -447,21 +521,72 @@ class LiteLLMResponsesTransformationHandler(CompletionTransformationBridge):
         self, tools: List[Dict[str, Any]]
     ) -> List["ALL_RESPONSES_API_TOOL_PARAMS"]:
         """Convert chat completion tools to responses API tools format"""
-        responses_tools = []
+        responses_tools: List["ALL_RESPONSES_API_TOOL_PARAMS"] = []
         for tool in tools:
-            responses_tools.append(tool)
+            # convert function tool from chat completion to responses API format
+            if tool.get("type") == "function":
+                function_tool = cast(
+                    ChatCompletionToolParamFunctionChunk, tool.get("function")
+                )
+                responses_tools.append(
+                    FunctionToolParam(
+                        name=function_tool["name"],
+                        parameters=function_tool.get("parameters"),
+                        strict=function_tool.get("strict"),
+                        type="function",
+                        description=function_tool.get("description"),
+                    )
+                )
+            else:
+                responses_tools.append(tool)  # type: ignore
+
         return cast(List["ALL_RESPONSES_API_TOOL_PARAMS"], responses_tools)
 
-    def _map_reasoning_effort(self, reasoning_effort: str) -> Optional[Reasoning]:
-        if reasoning_effort == "high":
-            return Reasoning(effort="high", summary="detailed")
+    def _extract_extra_body_params(self, optional_params: dict):
+        """
+        Extract extra_body from optional_params and separate supported Responses API params
+        from unsupported ones. Supported params are moved to top-level optional_params,
+        unsupported params remain in extra_body.
+        """
+        # Extract extra_body and separate supported params from unsupported ones
+        extra_body = optional_params.pop("extra_body", None) or {}
+        if not extra_body:
+            return optional_params
+
+        supported_responses_api_params = set(
+            ResponsesAPIOptionalRequestParams.__annotations__.keys()
+        )
+        # Also include params we handle specially
+        supported_responses_api_params.update({
+            "previous_response_id",
+            "reasoning_effort",  # We map this to "reasoning"
+        })
+        
+        # Extract supported params from extra_body and merge into optional_params
+        extra_body_copy = extra_body.copy()
+        for key, value in extra_body_copy.items():
+            if key in supported_responses_api_params:
+                # Prefer extra_body value if it exists (may have more complete info like summary in reasoning_effort)
+                optional_params[key] = extra_body.pop(key)
+
+        return optional_params
+
+    def _map_reasoning_effort(self, reasoning_effort: Union[str, Dict[str, Any]]) -> Optional[Reasoning]:
+        # If dict is passed, convert it directly to Reasoning object
+        if isinstance(reasoning_effort, dict):
+            return Reasoning(**reasoning_effort)  # type: ignore[typeddict-item]
+
+        # If string is passed, map without summary (default)
+        if reasoning_effort == "none":
+            return Reasoning(effort="none") # type: ignore
+        elif reasoning_effort == "high":
+            return Reasoning(effort="high")
         elif reasoning_effort == "medium":
-            # docs say "summary": "concise" is also an option, but it was rejected in practice, so defaulting "auto"
-            return Reasoning(effort="medium", summary="auto")
+            return Reasoning(effort="medium")
         elif reasoning_effort == "low":
-            return Reasoning(effort="low", summary="auto")
+            return Reasoning(effort="low")
         elif reasoning_effort == "minimal":
-            return Reasoning(effort="minimal", summary="auto")
+            return Reasoning(effort="minimal")
         return None
 
     def _map_responses_status_to_finish_reason(self, status: Optional[str]) -> str:

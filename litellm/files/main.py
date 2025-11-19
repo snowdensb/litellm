@@ -18,6 +18,7 @@ from litellm import get_secret_str
 from litellm.litellm_core_utils.get_llm_provider_logic import get_llm_provider
 from litellm.litellm_core_utils.litellm_logging import Logging as LiteLLMLoggingObj
 from litellm.llms.azure.files.handler import AzureOpenAIFilesAPI
+from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler, HTTPHandler
 from litellm.llms.custom_httpx.llm_http_handler import BaseLLMHTTPHandler
 from litellm.llms.openai.openai import FileDeleted, FileObject, OpenAIFilesAPI
 from litellm.llms.vertex_ai.files.handler import VertexAIFilesHandler
@@ -94,7 +95,9 @@ async def acreate_file(
 def create_file(
     file: FileTypes,
     purpose: Literal["assistants", "batch", "fine-tune"],
-    custom_llm_provider: Optional[Literal["openai", "azure", "vertex_ai", "bedrock"]] = None,
+    custom_llm_provider: Optional[
+        Literal["openai", "azure", "vertex_ai", "bedrock"]
+    ] = None,
     extra_headers: Optional[Dict[str, str]] = None,
     extra_body: Optional[Dict[str, str]] = None,
     **kwargs,
@@ -154,10 +157,12 @@ def create_file(
                 api_key=optional_params.api_key,
                 logging_obj=logging_obj,
                 _is_async=_is_async,
-                client=client
-                if client is not None
-                and isinstance(client, (HTTPHandler, AsyncHTTPHandler))
-                else None,
+                client=(
+                    client
+                    if client is not None
+                    and isinstance(client, (HTTPHandler, AsyncHTTPHandler))
+                    else None
+                ),
                 timeout=timeout,
             )
         elif custom_llm_provider == "openai":
@@ -268,13 +273,14 @@ def create_file(
         raise e
 
 
+@client
 async def afile_retrieve(
     file_id: str,
     custom_llm_provider: Literal["openai", "azure"] = "openai",
     extra_headers: Optional[Dict[str, str]] = None,
     extra_body: Optional[Dict[str, str]] = None,
     **kwargs,
-):
+) -> OpenAIFileObject:
     """
     Async: Get file contents
 
@@ -303,11 +309,12 @@ async def afile_retrieve(
         else:
             response = init_response
 
-        return response
+        return OpenAIFileObject(**response.model_dump())
     except Exception as e:
         raise e
 
 
+@client
 def file_retrieve(
     file_id: str,
     custom_llm_provider: Literal["openai", "azure"] = "openai",
@@ -416,12 +423,14 @@ def file_retrieve(
                     request=httpx.Request(method="create_thread", url="https://github.com/BerriAI/litellm"),  # type: ignore
                 ),
             )
+
         return cast(FileObject, response)
     except Exception as e:
         raise e
 
 
 # Delete file
+@client
 async def afile_delete(
     file_id: str,
     custom_llm_provider: Literal["openai", "azure"] = "openai",
@@ -436,12 +445,14 @@ async def afile_delete(
     """
     try:
         loop = asyncio.get_event_loop()
+        model = kwargs.pop("model", None)
         kwargs["is_async"] = True
 
         # Use a partial function to pass your keyword arguments
         func = partial(
             file_delete,
             file_id,
+            model,
             custom_llm_provider,
             extra_headers,
             extra_body,
@@ -462,9 +473,11 @@ async def afile_delete(
         raise e
 
 
+@client
 def file_delete(
     file_id: str,
-    custom_llm_provider: Literal["openai", "azure"] = "openai",
+    model: Optional[str] = None,
+    custom_llm_provider: Union[Literal["openai", "azure"], str] = "openai",
     extra_headers: Optional[Dict[str, str]] = None,
     extra_body: Optional[Dict[str, str]] = None,
     **kwargs,
@@ -475,6 +488,13 @@ def file_delete(
     LiteLLM Equivalent of DELETE https://api.openai.com/v1/files
     """
     try:
+        try:
+            if model is not None:
+                _, custom_llm_provider, _, _ = get_llm_provider(
+                    model, custom_llm_provider
+                )
+        except Exception:
+            pass
         optional_params = GenericLiteLLMParams(**kwargs)
         litellm_params_dict = get_litellm_params(**kwargs)
         ### TIMEOUT LOGIC ###
@@ -560,7 +580,7 @@ def file_delete(
             )
         else:
             raise litellm.exceptions.BadRequestError(
-                message="LiteLLM doesn't support {} for 'create_batch'. Only 'openai' is supported.".format(
+                message="LiteLLM doesn't support {} for 'delete_batch'. Only 'openai' is supported.".format(
                     custom_llm_provider
                 ),
                 model="n/a",
@@ -577,6 +597,7 @@ def file_delete(
 
 
 # List files
+@client
 async def afile_list(
     custom_llm_provider: Literal["openai", "azure"] = "openai",
     purpose: Optional[str] = None,
@@ -617,6 +638,7 @@ async def afile_list(
         raise e
 
 
+@client
 def file_list(
     custom_llm_provider: Literal["openai", "azure"] = "openai",
     purpose: Optional[str] = None,
@@ -729,9 +751,10 @@ def file_list(
         raise e
 
 
+@client
 async def afile_content(
     file_id: str,
-    custom_llm_provider: Literal["openai", "azure"] = "openai",
+    custom_llm_provider: Literal["openai", "azure", "vertex_ai"] = "openai",
     extra_headers: Optional[Dict[str, str]] = None,
     extra_body: Optional[Dict[str, str]] = None,
     **kwargs,
@@ -771,6 +794,7 @@ async def afile_content(
         raise e
 
 
+@client
 def file_content(
     file_id: str,
     model: Optional[str] = None,
@@ -886,6 +910,32 @@ def file_content(
                 file_content_request=_file_content_request,
                 client=client,
                 litellm_params=litellm_params_dict,
+            )
+        elif custom_llm_provider == "vertex_ai":
+            api_base = optional_params.api_base or ""
+            vertex_ai_project = (
+                optional_params.vertex_project
+                or litellm.vertex_project
+                or get_secret_str("VERTEXAI_PROJECT")
+            )
+            vertex_ai_location = (
+                optional_params.vertex_location
+                or litellm.vertex_location
+                or get_secret_str("VERTEXAI_LOCATION")
+            )
+            vertex_credentials = optional_params.vertex_credentials or get_secret_str(
+                "VERTEXAI_CREDENTIALS"
+            )
+
+            response = vertex_ai_files_instance.file_content(
+                _is_async=_is_async,
+                file_content_request=_file_content_request,
+                api_base=api_base,
+                vertex_credentials=vertex_credentials,
+                vertex_project=vertex_ai_project,
+                vertex_location=vertex_ai_location,
+                timeout=timeout,
+                max_retries=optional_params.max_retries,
             )
         else:
             raise litellm.exceptions.BadRequestError(
