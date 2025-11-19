@@ -1,0 +1,34 @@
++import DOMPurify from 'dompurify';
+ "use client";
+ 
+ import Usage from "@/components/usage";
+ import useAuthorized from "@/app/(dashboard)/hooks/useAuthorized";
+ import { useState } from "react";
+ 
+ const OldUsagePage = () => {
+   const { accessToken, token, userRole, userId, premiumUser } = useAuthorized();
++  const sanitizedAccessToken = DOMPurify.sanitize(accessToken);
++  const sanitizedToken = DOMPurify.sanitize(token);
++  const sanitizedUserRole = DOMPurify.sanitize(userRole);
++  const sanitizedUserId = DOMPurify.sanitize(userId);
++  const sanitizedPremiumUser = DOMPurify.sanitize(premiumUser);
+   const [keys, setKeys] = useState<null | any[]>([]);
+ 
+   return (
+     <Usage
+-      accessToken={accessToken}
+-      token={token}
+-      userRole={userRole}
+-      userID={userId}
+-      keys={keys}
+-      premiumUser={premiumUser}
++      accessToken={sanitizedAccessToken}
++      token={sanitizedToken}
++      userRole={sanitizedUserRole}
++      userID={sanitizedUserId}
++      premiumUser={sanitizedPremiumUser}
+     />
+   );
+ };
+ 
+ export default OldUsagePage;
