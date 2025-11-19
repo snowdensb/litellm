@@ -1,0 +1,39 @@
++import DOMPurify from 'dompurify';
+ "use client";
+ 
+ import SpendLogsTable from "@/components/view_logs";
+ import useAuthorized from "@/app/(dashboard)/hooks/useAuthorized";
+ import useTeams from "@/app/(dashboard)/hooks/useTeams";
+ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+ 
+ const LogsPage = () => {
+   const { accessToken, token, userRole, userId, premiumUser } = useAuthorized();
++  const sanitizedAccessToken = DOMPurify.sanitize(accessToken);
++  const sanitizedToken = DOMPurify.sanitize(token);
++  const sanitizedUserRole = DOMPurify.sanitize(userRole);
++  const sanitizedUserId = DOMPurify.sanitize(userId);
++  const sanitizedPremiumUser = DOMPurify.sanitize(premiumUser);
+   const { teams } = useTeams();
+ 
+   const queryClient = new QueryClient();
+ 
+   return (
+     <QueryClientProvider client={queryClient}>
+       <SpendLogsTable
+-        accessToken={accessToken}
+-        token={token}
+-        userRole={userRole}
+-        userID={userId}
+-        allTeams={teams || []}
+-        premiumUser={premiumUser}
++        accessToken={sanitizedAccessToken}
++        token={sanitizedToken}
++        userRole={sanitizedUserRole}
++        userID={sanitizedUserId}
++        premiumUser={sanitizedPremiumUser}
+       />
+     </QueryClientProvider>
+   );
+ };
+ 
+ export default LogsPage;
