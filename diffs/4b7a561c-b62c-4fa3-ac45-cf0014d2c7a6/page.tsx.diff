@@ -1,0 +1,31 @@
++import DOMPurify from 'dompurify';
+ "use client";
+ 
+ import CacheDashboard from "@/components/cache_dashboard";
+ import useAuthorized from "@/app/(dashboard)/hooks/useAuthorized";
+ 
+ const CachingPage = () => {
+   const { token, accessToken, userRole, userId, premiumUser } = useAuthorized();
++  const sanitizedToken = DOMPurify.sanitize(token);
++  const sanitizedAccessToken = DOMPurify.sanitize(accessToken);
++  const sanitizedUserRole = DOMPurify.sanitize(userRole);
++  const sanitizedUserId = DOMPurify.sanitize(userId);
++  const sanitizedPremiumUser = DOMPurify.sanitize(premiumUser);
+ 
+   return (
+     <CacheDashboard
+-      accessToken={accessToken}
+-      token={token}
+-      userRole={userRole}
+-      userID={userId}
+-      premiumUser={premiumUser}
++      accessToken={sanitizedAccessToken}
++      token={sanitizedToken}
++      userRole={sanitizedUserRole}
++      userID={sanitizedUserId}
++      premiumUser={sanitizedPremiumUser}
+     />
+   );
+ };
+ 
+ export default CachingPage;
