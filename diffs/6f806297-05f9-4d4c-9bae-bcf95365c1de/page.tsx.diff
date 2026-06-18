@@ -1,0 +1,15 @@
+ "use client";
+ 
++import DOMPurify from 'dompurify';
+ import TransformRequestPanel from "@/components/transform_request";
+ import useAuthorized from "@/app/(dashboard)/hooks/useAuthorized";
+ 
+ const APIPlaygroundPage = () => {
+   const { accessToken } = useAuthorized();
++  const sanitizedAccessToken = DOMPurify.sanitize(accessToken);
+ 
+-  return <TransformRequestPanel accessToken={accessToken} />;
++  return <TransformRequestPanel accessToken={sanitizedAccessToken} />;
+ };
+ 
+ export default APIPlaygroundPage;
