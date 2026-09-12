@@ -14,9 +14,9 @@
     "write-heading-ids": "docusaurus write-heading-ids"
   },
   "dependencies": {
-    "@docusaurus/core": "3.8.1",
+    "@docusaurus/core": "3.10.2",
     "@docusaurus/plugin-google-gtag": "3.8.1",
-    "@docusaurus/plugin-ideal-image": "3.8.1",
+    "@docusaurus/plugin-ideal-image": "3.10.2",
     "@docusaurus/preset-classic": "3.8.1",
     "@docusaurus/theme-mermaid": "3.8.1",
     "@inkeep/cxkit-docusaurus": "^0.5.89",
@@ -29,7 +29,7 @@
     "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "@docusaurus/module-type-aliases": "3.8.1",
+    "@docusaurus/module-type-aliases": "3.10.2",
     "dotenv": "^16.4.5"
   },
   "browserslist": {
