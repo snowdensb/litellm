@@ -86,7 +86,7 @@ jobs:
 
   mypy_linting:
     docker:
-      - image: cimg/python:3.12
+      - image: cimg/python:3.14
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -113,7 +113,7 @@ jobs:
           no_output_timeout: 10m
   local_testing:
     docker:
-      - image: cimg/python:3.12
+      - image: cimg/python:3.14
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -225,7 +225,7 @@ jobs:
             - local_testing_coverage
   langfuse_logging_unit_tests:
     docker:
-      - image: cimg/python:3.11
+      - image: cimg/python:3.14
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -326,7 +326,7 @@ jobs:
             - langfuse_coverage
   caching_unit_tests:
     docker:
-      - image: cimg/python:3.11
+      - image: cimg/python:3.14
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -433,7 +433,7 @@ jobs:
             - caching_coverage
   auth_ui_unit_tests:
     docker:
-      - image: cimg/python:3.11
+      - image: cimg/python:3.14
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -489,7 +489,7 @@ jobs:
 
   litellm_router_testing: # Runs all tests with the "router" keyword
     docker:
-      - image: cimg/python:3.11
+      - image: cimg/python:3.14
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -536,7 +536,7 @@ jobs:
 
   litellm_router_unit_testing: # Runs all tests with the "router" keyword
     docker:
-      - image: cimg/python:3.11
+      - image: cimg/python:3.14
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -705,7 +705,7 @@ jobs:
   # test_key_generate_prisma runs separately without parallel execution to avoid event loop issues with logging worker
   litellm_proxy_unit_testing_key_generation:
     docker:
-      - image: cimg/python:3.11
+      - image: cimg/python:3.14
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -811,7 +811,7 @@ jobs:
             - litellm_proxy_unit_tests_key_generation_coverage
   litellm_proxy_unit_testing_part1:
     docker:
-      - image: cimg/python:3.11
+      - image: cimg/python:3.14
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -918,7 +918,7 @@ jobs:
             - litellm_proxy_unit_tests_part1_coverage
   litellm_proxy_unit_testing_part2:
     docker:
-      - image: cimg/python:3.11
+      - image: cimg/python:3.14
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -1024,7 +1024,7 @@ jobs:
             - litellm_proxy_unit_tests_part2_coverage
   litellm_assistants_api_testing: # Runs all tests with the "assistants" keyword
     docker:
-      - image: cimg/python:3.13.1
+      - image: cimg/python:3.14.8
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -1069,7 +1069,7 @@ jobs:
             - litellm_assistants_api_coverage
   llm_translation_testing:
     docker:
-      - image: cimg/python:3.11
+      - image: cimg/python:3.14
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -1113,7 +1113,7 @@ jobs:
             - llm_translation_coverage
   mcp_testing:
     docker:
-      - image: cimg/python:3.11
+      - image: cimg/python:3.14
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -1158,7 +1158,7 @@ jobs:
             - mcp_coverage
   guardrails_testing:
     docker:
-      - image: cimg/python:3.11
+      - image: cimg/python:3.14
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -1204,7 +1204,7 @@ jobs:
 
   google_generate_content_endpoint_testing:
     docker:
-      - image: cimg/python:3.11
+      - image: cimg/python:3.14
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -1249,7 +1249,7 @@ jobs:
 
   llm_responses_api_testing:
     docker:
-      - image: cimg/python:3.11
+      - image: cimg/python:3.14
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -1292,7 +1292,7 @@ jobs:
             - llm_responses_api_coverage
   ocr_testing:
     docker:
-      - image: cimg/python:3.11
+      - image: cimg/python:3.14
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -1335,7 +1335,7 @@ jobs:
             - ocr_coverage
   search_testing:
     docker:
-      - image: cimg/python:3.11
+      - image: cimg/python:3.14
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -1379,7 +1379,7 @@ jobs:
   # Split litellm_mapped_tests into 3 parallel jobs for 3x faster execution
   litellm_mapped_tests_proxy:
     docker:
-      - image: cimg/python:3.11
+      - image: cimg/python:3.14
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -1406,7 +1406,7 @@ jobs:
             - litellm_proxy_tests_coverage
   litellm_mapped_tests_llms:
     docker:
-      - image: cimg/python:3.11
+      - image: cimg/python:3.14
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -1433,7 +1433,7 @@ jobs:
             - litellm_llms_tests_coverage
   litellm_mapped_tests_core:
     docker:
-      - image: cimg/python:3.11
+      - image: cimg/python:3.14
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -1460,7 +1460,7 @@ jobs:
             - litellm_core_tests_coverage
   litellm_mapped_enterprise_tests:
     docker:
-      - image: cimg/python:3.11
+      - image: cimg/python:3.14
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -1513,7 +1513,7 @@ jobs:
             - litellm_mapped_tests_coverage
   batches_testing:
     docker:
-      - image: cimg/python:3.11
+      - image: cimg/python:3.14
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -1558,7 +1558,7 @@ jobs:
             - batches_coverage
   litellm_utils_testing:
     docker:
-      - image: cimg/python:3.11
+      - image: cimg/python:3.14
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -1606,7 +1606,7 @@ jobs:
 
   pass_through_unit_testing:
     docker:
-      - image: cimg/python:3.11
+      - image: cimg/python:3.14
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -1649,7 +1649,7 @@ jobs:
             - pass_through_unit_tests_coverage
   image_gen_testing:
     docker:
-      - image: cimg/python:3.11
+      - image: cimg/python:3.14
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -1692,7 +1692,7 @@ jobs:
             - image_gen_coverage
   logging_testing:
     docker:
-      - image: cimg/python:3.11
+      - image: cimg/python:3.14
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -1742,7 +1742,7 @@ jobs:
             - logging_coverage
   audio_testing:
     docker:
-      - image: cimg/python:3.11
+      - image: cimg/python:3.14
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -1820,7 +1820,7 @@ jobs:
 
   installing_litellm_on_python_3_13:
     docker:
-      - image: cimg/python:3.13.1
+      - image: cimg/python:3.14.8
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -1916,7 +1916,7 @@ jobs:
 
   check_code_and_doc_quality:
     docker:
-      - image: cimg/python:3.11
+      - image: cimg/python:3.14
         auth:
           username: ${DOCKERHUB_USERNAME}
           password: ${DOCKERHUB_PASSWORD}
@@ -3144,7 +3144,7 @@ jobs:
 
   upload-coverage:
     docker:
-      - image: cimg/python:3.9
+      - image: cimg/python:3.14
     steps:
       - checkout
       - attach_workspace:
@@ -3170,7 +3170,7 @@ jobs:
 
   publish_to_pypi:
     docker:
-      - image: cimg/python:3.8
+      - image: cimg/python:3.14
     working_directory: ~/project
 
     environment:
@@ -3233,7 +3233,7 @@ jobs:
 
   publish_proxy_extras:
     docker:
-      - image: cimg/python:3.8
+      - image: cimg/python:3.14
     working_directory: ~/project/litellm-proxy-extras
     environment:
       TWINE_USERNAME: __token__
