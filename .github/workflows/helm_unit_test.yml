@@ -16,7 +16,7 @@ jobs:
       - name: Set up Helm 3.11.1
         uses: azure/setup-helm@v1
         with:
-          version: '3.11.1'
+          version: '3.22.1'
 
       - name: Install Helm Unit Test Plugin
         run: |
