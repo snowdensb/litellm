@@ -141,7 +141,7 @@ types-redis = "*"
 types-PyYAML = "*"
 opentelemetry-api = "1.25.0"
 opentelemetry-sdk = "1.25.0"
-opentelemetry-exporter-otlp = "1.25.0"
+opentelemetry-exporter-otlp = "1.26.0"
 langfuse = "^2.45.0"
 fastapi-offline = "^1.7.3"
 
@@ -151,7 +151,7 @@ hypercorn = "^0.15.0"
 prometheus-client = "0.20.0"
 opentelemetry-api = "1.25.0"
 opentelemetry-sdk = "1.25.0"
-opentelemetry-exporter-otlp = "1.25.0"
+opentelemetry-exporter-otlp = "1.26.0"
 azure-identity = "^1.15.0"
 
 [build-system]
